@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		962EBCF221B860C6008226DF /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 962EBCF121B860C6008226DF /* main.cpp */; };
+		962EBCF221B860C6008226DF /* async_performance_test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 962EBCF121B860C6008226DF /* async_performance_test.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -24,7 +24,7 @@
 
 /* Begin PBXFileReference section */
 		962EBCEE21B860C6008226DF /* BuiltInParallelizationTesting */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = BuiltInParallelizationTesting; sourceTree = BUILT_PRODUCTS_DIR; };
-		962EBCF121B860C6008226DF /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		962EBCF121B860C6008226DF /* async_performance_test.cpp */ = {isa = PBXFileReference; indentWidth = 3; lastKnownFileType = sourcecode.cpp.cpp; path = async_performance_test.cpp; sourceTree = "<group>"; tabWidth = 3; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,7 +57,7 @@
 		962EBCF021B860C6008226DF /* BuiltInParallelizationTesting */ = {
 			isa = PBXGroup;
 			children = (
-				962EBCF121B860C6008226DF /* main.cpp */,
+				962EBCF121B860C6008226DF /* async_performance_test.cpp */,
 			);
 			path = BuiltInParallelizationTesting;
 			sourceTree = "<group>";
@@ -118,7 +118,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				962EBCF221B860C6008226DF /* main.cpp in Sources */,
+				962EBCF221B860C6008226DF /* async_performance_test.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
