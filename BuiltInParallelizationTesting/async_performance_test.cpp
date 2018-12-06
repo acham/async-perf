@@ -30,9 +30,9 @@ long work(int seed) {
    return uint_limit_reached_count;
 }
 
-double get_wall_time(){
+double get_wall_time() {
    struct timeval time;
-   if (gettimeofday(&time,NULL)){
+   if (gettimeofday(&time,NULL)) {
       //  Handle error
       return 0;
    }
