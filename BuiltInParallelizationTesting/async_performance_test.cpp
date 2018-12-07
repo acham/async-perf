@@ -10,6 +10,7 @@
 #include <climits>
 #include <future>
 #include <sys/time.h>
+#include <stdlib.h>
 
 /*
  INT_MAX: 2.14 E 9
@@ -19,13 +20,14 @@
 long work(int seed) {
    long uint_limit_reached_count = 0;
    
-   for (long i = 0; i < static_cast<long>(INT_MAX); ++i)
-   {
-      auto product = i * INT_MAX;
-      auto quotient = product / seed;
-      if (quotient > UINT_MAX)
-         ++uint_limit_reached_count;
-   }
+   for (int j = 0; j < seed; j++)
+      for (long i = 0; i < static_cast<long>(INT_MAX); ++i)
+      {
+         auto product = i * INT_MAX;
+         auto quotient = product / seed;
+         if (quotient > UINT_MAX)
+            ++uint_limit_reached_count;
+      }
    
    return uint_limit_reached_count;
 }
@@ -39,12 +41,39 @@ double get_wall_time() {
    return (double)time.tv_sec + (double)time.tv_usec * .000001;
 }
 
-int main(int argc, char **argv) {
+void usage() {
+   std::cerr << "Usage: async-perf [num-jobs] [seed]" <<
+      "\n\twhere seed determines the size of each job. \n\tOne job with seed 1 runs in about 18s on a modern commodity CPU." <<
+      "\n\tnum-jobs and seed must be integers greater than 0. num-jobs must be < 10000, seed < 1000." <<
+      std::endl;
+   exit(1);
+}
+
+int main(int argc, char *argv[]) {
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+   std::cerr << "Windows not supported yet." << std::endl;
+   exit(1);
+#endif
+   
+   // Argument parsing
+   if (argc != 3)
+      usage();
+   
+   long lnum_jobs = strtol(argv[1], NULL, 0);
+   long lseed = strtol(argv[2], NULL, 0);
+   
+   if (lnum_jobs >= 10000 || lseed >= 1000) {
+      std::cerr << "Arguments out of range. num-jobs must be < 10000, seed < 1000." << std::endl;
+      exit(1);
+   }
+   
+   int num_jobs = static_cast<int>(lnum_jobs);
+   int seed = static_cast<int>(lseed);
+   
+   std::cout << "Running " << num_jobs << " jobs with a seed of " << seed << std::endl;
+   
    std::cout << "INT_MAX: " << INT_MAX << std::endl;
    std::cout << "UINT_MAX: " << UINT_MAX << std::endl;
-   // (should be about 8B, or about 4*INT_MAX)
-   
-   int num_jobs = 1;
    
    clock_t sync_cpu_start, async_cpu_start;
    double sync_cpu_duration, async_cpu_duration,
@@ -59,7 +88,7 @@ int main(int argc, char **argv) {
    sync_wall_clock_start = get_wall_time();
    for (int i = 0; i < num_jobs; ++i)
    {
-      sync_results[i] = work(7);
+      sync_results[i] = work(seed);
    }
    sync_wall_clock_duration = get_wall_time() - sync_wall_clock_start;
    sync_cpu_duration = (clock() - sync_cpu_start) / (double)CLOCKS_PER_SEC;
@@ -81,7 +110,7 @@ int main(int argc, char **argv) {
    // Start the async jobs
    for (int i = 0; i < num_jobs; ++i)
    {
-      futures[i] = std::async(work, 7);
+      futures[i] = std::async(work, seed);
    }
    
    // Wait for and collect the results
@@ -102,8 +131,6 @@ int main(int argc, char **argv) {
    std::cout << "async CPU duration: " << async_cpu_duration << " s" << std::endl;
    std::cout << "async wall-clock duration: " << async_wall_clock_duration << " s" << std::endl;
    std::cout << "speedup: " << sync_wall_clock_duration / async_wall_clock_duration << std::endl;
-   
-   
    
    return 0;
 }
