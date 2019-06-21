@@ -70,11 +70,11 @@ int main(int argc, char *argv[]) {
    int num_jobs = static_cast<int>(lnum_jobs);
    int seed = static_cast<int>(lseed);
    
-   std::cout << "Running " << num_jobs << " jobs with a seed of " << seed << std::endl;
    std::cout << "Size of long: " << sizeof(lnum_jobs) * 8 << std::endl;
    std::cout << "Size of int: " << sizeof(num_jobs) * 8 << std::endl;
    std::cout << "INT_MAX: " << INT_MAX << std::endl;
    std::cout << "UINT_MAX: " << UINT_MAX << std::endl;
+   std::cout << "Running " << num_jobs << " jobs with a seed of " << seed << std::endl;
    
    clock_t sync_cpu_start, async_cpu_start;
    double sync_cpu_duration, async_cpu_duration,

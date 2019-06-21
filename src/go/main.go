@@ -4,10 +4,14 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"time"
 	"unsafe"
 
 	log "github.com/sirupsen/logrus"
 )
+
+//#include <time.h>
+import "C"
 
 func main() {
 	argsWithoutProg := os.Args
@@ -20,19 +24,36 @@ func main() {
 	seed, err := strconv.Atoi(os.Args[2])
 	handle(err)
 
-	// Info
-	log.Info(num_jobs, seed)
-	log.Printf("Size of int: %d\n", unsafe.Sizeof(seed))
-
 	if num_jobs >= 10000 || seed >= 1000 {
 		log.Fatal("Arguments out of range. num-jobs must be < 10000, seed < 1000.")
 	}
 
-	log.Info("Running ", num_jobs, " jobs with a seed of ", seed)
-	log.Info("Size of int: ", unsafe.Sizeof(seed))
+	log.Info("Size of int: ", unsafe.Sizeof(seed)*8)
 	log.Info("MaxInt32: ", math.MaxInt32)
 	log.Info("MaxUint32: ", math.MaxUint32)
+	log.Info("Running ", num_jobs, " jobs with a seed of ", seed)
 
+	sync_results := make([]int64, num_jobs)
+	// async_results := make([]int64, num_jobs)
+
+	// Sync jobs
+	sync_cpu_start := C.clock()
+	sync_wall_start := time.Now()
+
+	for i := 0; i < num_jobs; i++ {
+		sync_results[i] = work(seed)
+	}
+	sync_wall_duration := time.Since(sync_wall_start)
+	sync_cpu_duration := float64(C.clock()-sync_cpu_start) / float64(C.CLOCKS_PER_SEC)
+
+	log.Info("sync values (sanity check): ")
+	var sync_vals string
+	for i := 0; i < num_jobs; i++ {
+		sync_vals += strconv.FormatInt(sync_results[i], 10) + " "
+	}
+	log.Info(sync_vals)
+	log.Info("sync CPU duration: ", sync_cpu_duration, " s")
+	log.Info("sync wall-clock duration: ", sync_wall_duration.Seconds(), " s")
 }
 
 func usage() {
@@ -47,4 +68,22 @@ func handle(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func work(seed int) int64 {
+	var uint_limit_reached_count int64 = 0
+
+	for j := 0; j < seed; j++ {
+		// likely both vars below are 64-bit already but just to be sure
+		var i int64
+		for i = 0; i < int64(math.MaxInt32); i++ {
+			product := i * math.MaxInt32
+			quotient := product / int64(seed)
+			if quotient > math.MaxUint32 {
+				uint_limit_reached_count++
+			}
+		}
+	}
+
+	return uint_limit_reached_count
 }
