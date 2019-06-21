@@ -1,5 +1,5 @@
 # Async-perf
-Uses built-in parallelization mechanisms in various programming languages to measure speedup.
+Uses built-in parallelization mechanisms (`async` in C++, goroutines in Go) in various programming languages to measure speedup.
 
 Requires: g++ with c++14 support, go 1.12, make.
 
