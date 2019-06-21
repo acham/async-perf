@@ -33,15 +33,15 @@ func main() {
 	log.Info("MaxUint32: ", math.MaxUint32)
 	log.Info("Running ", num_jobs, " jobs with a seed of ", seed)
 
-	sync_results := make([]int64, num_jobs)
-	// async_results := make([]int64, num_jobs)
+	sync_results := make(chan int64, num_jobs)
+	async_results := make(chan int64, num_jobs)
 
-	// Sync jobs
+	/** Sync jobs **/
 	sync_cpu_start := C.clock()
 	sync_wall_start := time.Now()
 
 	for i := 0; i < num_jobs; i++ {
-		sync_results[i] = work(seed)
+		work(seed, sync_results)
 	}
 	sync_wall_duration := time.Since(sync_wall_start)
 	sync_cpu_duration := float64(C.clock()-sync_cpu_start) / float64(C.CLOCKS_PER_SEC)
@@ -49,11 +49,32 @@ func main() {
 	log.Info("sync values (sanity check): ")
 	var sync_vals string
 	for i := 0; i < num_jobs; i++ {
-		sync_vals += strconv.FormatInt(sync_results[i], 10) + " "
+		sync_vals += strconv.FormatInt(<-sync_results, 10) + " "
 	}
 	log.Info(sync_vals)
 	log.Info("sync CPU duration: ", sync_cpu_duration, " s")
 	log.Info("sync wall-clock duration: ", sync_wall_duration.Seconds(), " s")
+
+	/** Async jobs **/
+	async_cpu_start := C.clock()
+	async_wall_start := time.Now()
+	// Start async jobs
+	for i := 0; i < num_jobs; i++ {
+		go work(seed, async_results)
+	}
+	var async_vals string
+	for i := 0; i < num_jobs; i++ {
+		async_vals += strconv.FormatInt(<-async_results, 10) + " "
+	}
+	// Here: all results have been collected
+	async_wall_duration := time.Since(async_wall_start)
+	async_cpu_duration := float64(C.clock()-async_cpu_start) / float64(C.CLOCKS_PER_SEC)
+
+	log.Info("async values (sanity check): ")
+	log.Info(async_vals)
+	log.Info("async CPU duration: ", async_cpu_duration, " s")
+	log.Info("async wall-clock duration: ", async_wall_duration.Seconds(), " s")
+	log.Info("speedup: ", sync_wall_duration.Seconds()/async_wall_duration.Seconds())
 }
 
 func usage() {
@@ -70,7 +91,7 @@ func handle(err error) {
 	}
 }
 
-func work(seed int) int64 {
+func work(seed int, results chan int64) {
 	var uint_limit_reached_count int64 = 0
 
 	for j := 0; j < seed; j++ {
@@ -85,5 +106,5 @@ func work(seed int) int64 {
 		}
 	}
 
-	return uint_limit_reached_count
+	results <- uint_limit_reached_count
 }
