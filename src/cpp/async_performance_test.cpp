@@ -7,29 +7,31 @@
 //
 
 #include <iostream>
-#include <climits>
 #include <future>
+#include <cmath>
 #include <sys/time.h>
 #include <stdlib.h>
 
-/*
- INT_MAX: 2.14 E 9
- UINT_MAX: 4.29 E 9
- */
+double poly(double x) {
+   // A simple polynomial calculation
+   return pow(x, 3) - 4 * pow(x, 2) + x;
+}
 
-long work(int seed) {
-   long uint_limit_reached_count = 0;
-   
-   for (int j = 0; j < seed; j++)
-      for (long i = 0; i < static_cast<long>(INT_MAX); ++i)
-      {
-         auto product = i * INT_MAX;
-         auto quotient = product / seed;
-         if (quotient > UINT_MAX)
-            ++uint_limit_reached_count;
-      }
-   
-   return uint_limit_reached_count;
+double work(int seed) {
+   // Calculate the integral of the polynomial from 0 to (100 * seed).
+   double s = 0.0;
+   double start = 0.0;
+   double end = 100.0;
+   int steps = seed * 1e8;
+   double dx = (end - start) / (double)steps;
+      
+   for (int i = 0; i < steps; i++) {
+      s += poly(i * dx);
+   }
+
+   auto result = s * dx;
+   std::cout << "result in work: " << result << std::endl;
+   return result;
 }
 
 double get_wall_time() {
@@ -50,6 +52,8 @@ void usage() {
 }
 
 int main(int argc, char *argv[]) {
+   std::cout << std::fixed;
+
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
    std::cerr << "Windows not supported yet." << std::endl;
    exit(1);
@@ -69,11 +73,7 @@ int main(int argc, char *argv[]) {
    
    int num_jobs = static_cast<int>(lnum_jobs);
    int seed = static_cast<int>(lseed);
-   
-   std::cout << "Size of long: " << sizeof(lnum_jobs) * 8 << std::endl;
-   std::cout << "Size of int: " << sizeof(num_jobs) * 8 << std::endl;
-   std::cout << "INT_MAX: " << INT_MAX << std::endl;
-   std::cout << "UINT_MAX: " << UINT_MAX << std::endl;
+
    std::cout << "Running " << num_jobs << " jobs with a seed of " << seed << std::endl;
    
    clock_t sync_cpu_start, async_cpu_start;
@@ -81,8 +81,8 @@ int main(int argc, char *argv[]) {
    sync_wall_clock_start, async_wall_clock_start,
    sync_wall_clock_duration, async_wall_clock_duration;
    
-   long sync_results[num_jobs];
-   long async_results[num_jobs];
+   double sync_results[num_jobs];
+   double async_results[num_jobs];
    
    /** Sync jobs **/
    sync_cpu_start = clock();
@@ -93,18 +93,12 @@ int main(int argc, char *argv[]) {
    }
    sync_wall_clock_duration = get_wall_time() - sync_wall_clock_start;
    sync_cpu_duration = (clock() - sync_cpu_start) / (double)CLOCKS_PER_SEC;
-   
-   std::cout << "sync values (sanity check): " << std::endl;
-   for (int i = 0; i < num_jobs; ++i)
-   {
-      std::cout << sync_results[i] << " ";
-   }
-   std::cout << std::endl;
+
    std::cout << "sync CPU duration: " << sync_cpu_duration << " s" << std::endl;
    std::cout << "sync wall-clock duration: " << sync_wall_clock_duration << " s" << std::endl;
    
    /** Async jobs **/
-   std::future<long> futures[num_jobs];
+   std::future<double> futures[num_jobs];
    
    async_cpu_start = clock();
    async_wall_clock_start = get_wall_time();
@@ -121,13 +115,6 @@ int main(int argc, char *argv[]) {
    }
    async_wall_clock_duration = get_wall_time() - async_wall_clock_start;
    async_cpu_duration = (clock() - async_cpu_start) / (double)CLOCKS_PER_SEC;
-   
-   std::cout << "async values (sanity check): " << std::endl;
-   for (int i = 0; i < num_jobs; ++i)
-   {
-      std::cout << async_results[i] << " ";
-   }
-   std::cout << std::endl;
    
    std::cout << "async CPU duration: " << async_cpu_duration << " s" << std::endl;
    std::cout << "async wall-clock duration: " << async_wall_clock_duration << " s" << std::endl;
