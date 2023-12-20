@@ -5,7 +5,6 @@ import (
 	"os"
 	"strconv"
 	"time"
-	"unsafe"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -28,30 +27,21 @@ func main() {
 		log.Fatal("Arguments out of range. num-jobs must be < 10000, seed < 1000.")
 	}
 
-	log.Info("Size of int: ", unsafe.Sizeof(seed)*8)
-	log.Info("MaxInt32: ", math.MaxInt32)
-	log.Info("MaxUint32: ", math.MaxUint32)
 	log.Info("Running ", num_jobs, " jobs with a seed of ", seed)
 
-	sync_results := make(chan int64, num_jobs)
-	async_results := make(chan int64, num_jobs)
+	sync_results := make(chan float64, num_jobs)
+	async_results := make(chan float64, num_jobs)
 
 	/** Sync jobs **/
 	sync_cpu_start := C.clock()
 	sync_wall_start := time.Now()
 
 	for i := 0; i < num_jobs; i++ {
-		work(seed, sync_results)
+		work(int32(seed), sync_results)
 	}
 	sync_wall_duration := time.Since(sync_wall_start)
 	sync_cpu_duration := float64(C.clock()-sync_cpu_start) / float64(C.CLOCKS_PER_SEC)
 
-	log.Info("sync values (sanity check): ")
-	var sync_vals string
-	for i := 0; i < num_jobs; i++ {
-		sync_vals += strconv.FormatInt(<-sync_results, 10) + " "
-	}
-	log.Info(sync_vals)
 	log.Info("sync CPU duration: ", sync_cpu_duration, " s")
 	log.Info("sync wall-clock duration: ", sync_wall_duration.Seconds(), " s")
 
@@ -60,11 +50,11 @@ func main() {
 	async_wall_start := time.Now()
 	// Start async jobs
 	for i := 0; i < num_jobs; i++ {
-		go work(seed, async_results)
+		go work(int32(seed), async_results)
 	}
 	var async_vals string
 	for i := 0; i < num_jobs; i++ {
-		async_vals += strconv.FormatInt(<-async_results, 10) + " "
+		async_vals += strconv.FormatFloat(float64(<-async_results), 'f', 4, 64) + " "
 	}
 	// Here: all results have been collected
 	async_wall_duration := time.Since(async_wall_start)
@@ -91,20 +81,34 @@ func handle(err error) {
 	}
 }
 
-func work(seed int, results chan int64) {
-	var uint_limit_reached_count int64 = 0
+func poly(x float64) float64 {
+	// log.Info("x in poly: ", x)
+	y := float64(x)
+	// log.Info("y in poly: ", y)
+	res := math.Pow(y, 3) - 4*math.Pow(y, 2) + y
+	// log.Info("res: ", res)
+	// log.Info("float64(res): ", float64(res))
+	return float64(res)
+}
 
-	for j := 0; j < seed; j++ {
-		// likely both vars below are 64-bit already but just to be sure
-		var i int64
-		for i = 0; i < int64(math.MaxInt32); i++ {
-			product := i * math.MaxInt32
-			quotient := product / int64(seed)
-			if quotient > math.MaxUint32 {
-				uint_limit_reached_count++
-			}
-		}
+func work(seed int32, results chan float64) {
+	var s float64 = 0
+	var start float64 = 0
+	var end float64 = 100
+	var steps int32 = seed * 1e8
+	var dx float64 = (end - start) / float64(steps)
+	log.Info("dx: ", dx)
+	log.Info("steps: ", steps)
+	log.Info("int steps: ", int(steps))
+
+	for i := 0; i < int(steps); i++ {
+		// log.Info("float64(i): ", float64(i))
+		s += poly(float64(i) * dx)
+		// log.Info("s: ", s)
+		// os.Exit(0)
 	}
 
-	results <- uint_limit_reached_count
+	result := s * dx
+	log.Info("result in work: ", result)
+	results <- result
 }

@@ -24,7 +24,10 @@ double work(int seed) {
    double end = 100.0;
    int steps = seed * 1e8;
    double dx = (end - start) / (double)steps;
-      
+   
+   std::cout << "dx: " << dx << std::endl;
+   std::cout << "steps: " << steps << std::endl;
+   
    for (int i = 0; i < steps; i++) {
       s += poly(i * dx);
    }
