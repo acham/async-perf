@@ -7,6 +7,8 @@
 //
 
 #include <iostream>
+#include <iomanip>
+
 #include <future>
 #include <cmath>
 #include <sys/time.h>
@@ -25,15 +27,11 @@ double work(int seed) {
    int steps = seed * 1e8;
    double dx = (end - start) / (double)steps;
    
-   std::cout << "dx: " << dx << std::endl;
-   std::cout << "steps: " << steps << std::endl;
-   
    for (int i = 0; i < steps; i++) {
       s += poly(i * dx);
    }
 
    auto result = s * dx;
-   std::cout << "result in work: " << result << std::endl;
    return result;
 }
 
@@ -48,7 +46,7 @@ double get_wall_time() {
 
 void usage() {
    std::cerr << "Usage: async-perf [num-jobs] [seed]" <<
-      "\n\twhere seed determines the size of each job. \n\tOne job with seed 1 runs in about 18s on a modern commodity CPU." <<
+      "\n\twhere seed determines the size of each job. \n\tOne job with seed 1 runs in about 2s on a modern commodity CPU." <<
       "\n\tnum-jobs and seed must be integers greater than 0. num-jobs must be < 10000, seed < 1000." <<
       std::endl;
    exit(1);
@@ -119,6 +117,7 @@ int main(int argc, char *argv[]) {
    async_wall_clock_duration = get_wall_time() - async_wall_clock_start;
    async_cpu_duration = (clock() - async_cpu_start) / (double)CLOCKS_PER_SEC;
    
+   std::cout << "async result: " << async_results[0] << std::endl;
    std::cout << "async CPU duration: " << async_cpu_duration << " s" << std::endl;
    std::cout << "async wall-clock duration: " << async_wall_clock_duration << " s" << std::endl;
    std::cout << "speedup: " << sync_wall_clock_duration / async_wall_clock_duration << std::endl;

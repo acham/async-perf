@@ -13,6 +13,8 @@ import (
 import "C"
 
 func main() {
+	log.Info("Starting aync-perf in Go")
+
 	argsWithoutProg := os.Args
 	if len(argsWithoutProg) != 3 {
 		usage()
@@ -52,16 +54,13 @@ func main() {
 	for i := 0; i < num_jobs; i++ {
 		go work(int32(seed), async_results)
 	}
-	var async_vals string
-	for i := 0; i < num_jobs; i++ {
-		async_vals += strconv.FormatFloat(float64(<-async_results), 'f', 4, 64) + " "
-	}
+
+	log.Printf("async result: %f", <-async_results)
+
 	// Here: all results have been collected
 	async_wall_duration := time.Since(async_wall_start)
 	async_cpu_duration := float64(C.clock()-async_cpu_start) / float64(C.CLOCKS_PER_SEC)
 
-	log.Info("async values (sanity check): ")
-	log.Info(async_vals)
 	log.Info("async CPU duration: ", async_cpu_duration, " s")
 	log.Info("async wall-clock duration: ", async_wall_duration.Seconds(), " s")
 	log.Info("speedup: ", sync_wall_duration.Seconds()/async_wall_duration.Seconds())
@@ -70,7 +69,7 @@ func main() {
 func usage() {
 	log.Error("Usage: async-perf [num-jobs] [seed]" +
 		"\n\twhere seed determines the size of each job." +
-		"\n\tOne job with seed 1 runs in about 18s on a modern commodity CPU." +
+		"\n\tOne job with seed 1 runs in about 2s on a modern commodity CPU." +
 		"\n\tnum-jobs and seed must be integers greater than 0. num-jobs must be < 10000, seed < 1000.")
 	os.Exit(1)
 }
@@ -82,12 +81,8 @@ func handle(err error) {
 }
 
 func poly(x float64) float64 {
-	// log.Info("x in poly: ", x)
 	y := float64(x)
-	// log.Info("y in poly: ", y)
 	res := math.Pow(y, 3) - 4*math.Pow(y, 2) + y
-	// log.Info("res: ", res)
-	// log.Info("float64(res): ", float64(res))
 	return float64(res)
 }
 
@@ -97,18 +92,11 @@ func work(seed int32, results chan float64) {
 	var end float64 = 100
 	var steps int32 = seed * 1e8
 	var dx float64 = (end - start) / float64(steps)
-	log.Info("dx: ", dx)
-	log.Info("steps: ", steps)
-	log.Info("int steps: ", int(steps))
 
 	for i := 0; i < int(steps); i++ {
-		// log.Info("float64(i): ", float64(i))
 		s += poly(float64(i) * dx)
-		// log.Info("s: ", s)
-		// os.Exit(0)
 	}
 
 	result := s * dx
-	log.Info("result in work: ", result)
 	results <- result
 }

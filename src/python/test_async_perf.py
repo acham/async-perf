@@ -1,7 +1,5 @@
-import ctypes
 import os
 import logging
-import math
 import time
 
 from multiprocessing import Pool
@@ -19,27 +17,32 @@ def num_jobs(pytestconfig):
 def seed(pytestconfig):
     return pytestconfig.getoption("seed")
 
-def limits(c_int_type):
-    signed = c_int_type(-1).value < c_int_type(0).value
-    bit_size = ctypes.sizeof(c_int_type) * 8
-    signed_limit = 2 ** (bit_size - 1)
-    return (-signed_limit, signed_limit - 1) if signed else (0, 2 * signed_limit - 1)
+def usage():
+    _logger.info("\n\tUsage: "
+                 "\n\t $ python -m pytest test_async_perf.py --num_jobs [num-jobs] --seed [seed]"
+                 "\n\twhere seed determines the size of each job."
+                 "\n\tOne job with seed 1 runs in about 20s on a modern commodity CPU."
+                 "\n\tUse more than 1 job to measure multi-core speedup.")
 
-def perform_work(seed: int, int_max: int):
-    uint_limit_reached_count = 0
+def poly(x):
+    y = x**3 - 4 * x**2 + x
+    return y 
 
-    for j in range(seed):
-        for i in range(math.floor(int_max/8)):
-            product = i * int_max
-            quotient = product / seed
-            if quotient > int_max:
-                uint_limit_reached_count += 1
-    
-    return uint_limit_reached_count
+def perform_work(seed: int):
+    s = 0
+    start = 0
+    end = 100
+    steps = int(seed * 1e08)
+    dx = (end - start) / steps
 
-def perform_work_cpu_time(seed:int, int_max: int):
+    for i in range(steps):
+        s += poly(i * dx)
+
+    return s * dx
+
+def perform_work_cpu_time(seed:int):
     cpu_time_start = time.process_time()
-    perform_work_result = perform_work(seed, int_max)
+    perform_work_result = perform_work(seed)
     cpu_duration = time.process_time() - cpu_time_start
 
     return (perform_work_result, cpu_duration)
@@ -49,17 +52,19 @@ def test_speedup(num_jobs, seed):
     if os.name == "nt":
         _logger.info("Windows not supported yet.")
 
-    inum_jobs = int(num_jobs)
-    iseed = int(seed)
+    _logger.info(f"num_jobs {num_jobs}, seed {seed}")
+
+    try:
+        inum_jobs = int(num_jobs)
+        iseed = int(seed)
+    except TypeError:
+        usage()
+        return
 
     if inum_jobs >= 10000 or iseed >= 1000:
         raise ValueError("Arguments out of range. num_jobs must be < 10000, seed < 1000.")
 
-    INT_MAX = limits(ctypes.c_int32)[1]
-    UINT_MAX = limits(ctypes.c_uint32)[1]
-    _logger.info("INT_MAX: %i" % INT_MAX)
-    _logger.info("UINT_MAX: %i" % UINT_MAX)
-    _logger.info("Running %i jobs with a seed of %i" % (inum_jobs, iseed))
+    _logger.info("Running %i job(s) with a seed of %i" % (inum_jobs, iseed))
 
     sync_results = []
 
@@ -68,7 +73,7 @@ def test_speedup(num_jobs, seed):
     sync_wall_clock_start = time.time()
 
     for _ in range(inum_jobs):
-        sync_results.append(perform_work(iseed, INT_MAX))
+        sync_results.append(perform_work(iseed))
 
     sync_cpu_duration = time.process_time() - sync_cpu_time_start
     sync_wall_clock_duration = time.time() - sync_wall_clock_start
@@ -77,12 +82,13 @@ def test_speedup(num_jobs, seed):
     async_wall_clock_start = time.time()
 
     with Pool() as pool:
-        async_results = pool.starmap(perform_work_cpu_time, [(iseed, INT_MAX) for i in range(inum_jobs)])
+        async_results = pool.starmap(perform_work_cpu_time, [(iseed,) for i in range(inum_jobs)])
 
     async_wall_clock_duration = time.time() - async_wall_clock_start
     async_cpu_duration = sum([async_results_tuple[1] for async_results_tuple in async_results])
     speedup = sync_wall_clock_duration / async_wall_clock_duration
 
+    _logger.info("async result: %f" % async_results[0][0])
     _logger.info("sync wall-clock duration: %f" % sync_wall_clock_duration)
     _logger.info("sync cpu duration: %f" % sync_cpu_duration)
     _logger.info("async wall-clock duration: %f" % async_wall_clock_duration)
